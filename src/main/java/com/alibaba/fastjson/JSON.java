@@ -277,7 +277,7 @@ public abstract class JSON implements JSONStreamAware, JSONAware {
     }
 
     /**
-     * 
+     * 反序列化三种类型：① [String, Class] ② [String, Type] ③ [InputStream, Type]
      * This method deserializes the specified Json into an object of the specified class. It is not
      * suitable to use if the specified class is a generic type since it will not have the generic
      * type information because of the Type Erasure feature of Java. Therefore, this method should not
