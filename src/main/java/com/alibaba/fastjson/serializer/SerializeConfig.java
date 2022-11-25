@@ -60,6 +60,11 @@ public class SerializeConfig {
     
     private static boolean                                jodaError       = false;
 
+    /**
+     * 是否使用ASM？默认只要不是安卓虚拟机都是true。
+     * 这个可通过fastjson配置fastjson.asmEnable进行关闭 ↓
+     * @see JSON#config(Properties)
+     */
     private boolean                                       asm             = !ASMUtils.IS_ANDROID;
     private ASMSerializerFactory                          asmFactory;
     protected String                                      typeKey         = JSON.DEFAULT_TYPE_KEY;

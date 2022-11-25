@@ -20,9 +20,13 @@ import java.util.Collection;
 import java.util.Locale;
 import java.util.TimeZone;
 
+/**
+ * JSON分析器接口
+ * 实际分析器(JSONScanner、JSONReaderScanner)都是通过JSONLexerBase(实现当前接口)继承而来。
+ */
 public interface JSONLexer {
 
-    char EOI            = 0x1A;
+    char EOI            = 0x1A;     // 结尾标识符，为什么是26？
     int  NOT_MATCH      = -1;
     int  NOT_MATCH_NAME = -2;
     int  UNKNOWN        = 0;
@@ -44,6 +48,7 @@ public interface JSONLexer {
 
     char getCurrent();
 
+    // 通过JSON字符串找到下一个位置的字符
     char next();
 
     String scanSymbol(final SymbolTable symbolTable);

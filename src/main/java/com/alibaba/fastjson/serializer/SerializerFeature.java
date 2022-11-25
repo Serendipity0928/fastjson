@@ -19,6 +19,10 @@ package com.alibaba.fastjson.serializer;
  * @author wenshao[szujobs@hotmail.com]
  */
 public enum SerializerFeature {
+    /**
+     * 输出key时是否使用双引号。
+     * 默认为true
+     */
     QuoteFieldNames,
     /**
      * 
@@ -34,6 +38,7 @@ public enum SerializerFeature {
     WriteEnumUsingToString,
     /**
      * 用枚举name()输出
+     * 默认true
      */
     WriteEnumUsingName,
     /**
@@ -57,10 +62,14 @@ public enum SerializerFeature {
      */
     WriteNullBooleanAsFalse,
     /**
+     * 类中的Get方法对应的Field是transient，序列化时将会被忽略。
+     * 默认为true
      * @since 1.1
      */
     SkipTransientField,
     /**
+     * 按字段名称排序后输出。
+     * 默认为true。
      * @since 1.1
      */
     SortField,
@@ -150,6 +159,8 @@ public enum SerializerFeature {
     WriteBigDecimalAsPlain,
 
     /**
+     * 字段按照TreeMap排序。
+     * 默认false，可在fastjson.properties中设置fastjson.serializerFeatures.MapSortField
      * @since 1.2.27
      */
     MapSortField;

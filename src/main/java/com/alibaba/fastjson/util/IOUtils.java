@@ -37,41 +37,48 @@ import com.alibaba.fastjson.JSONException;
  */
 public class IOUtils {
     
-    public final static String     FASTJSON_PROPERTIES              = "fastjson.properties";
+    public final static String     FASTJSON_PROPERTIES              = "fastjson.properties";        // FastJson的properties配置文件
     public final static String     FASTJSON_COMPATIBLEWITHJAVABEAN  = "fastjson.compatibleWithJavaBean";
     public final static String     FASTJSON_COMPATIBLEWITHFIELDNAME = "fastjson.compatibleWithFieldName";
-    public final static Properties DEFAULT_PROPERTIES               = new Properties();
+    public final static Properties DEFAULT_PROPERTIES               = new Properties();     // FastJson的自定义配置(FASTJSON_PROPERTIES)
     public final static Charset    UTF8                             = Charset.forName("UTF-8");
     public final static char[]     DIGITS                           = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
-    public final static boolean[]  firstIdentifierFlags             = new boolean[256];
-    public final static boolean[]  identifierFlags                  = new boolean[256];
+    /**
+     * 在解析JSON字符串的时候，需要判断字符是否满足要求。
+     * @see com.alibaba.fastjson.parser.JSONLexerBase#scanSymbolUnQuoted
+     * // TODO: 2022/11/23 为啥是256？
+     */
+    public final static boolean[]  firstIdentifierFlags             = new boolean[256];     // 字符串首字母
+    public final static boolean[]  identifierFlags                  = new boolean[256];     // 字符串非首字母
     static {
         for (char c = 0; c < firstIdentifierFlags.length; ++c) {
-            if (c >= 'A' && c <= 'Z') {
+            if (c >= 'A' && c <= 'Z') {             // [65, 90]
                 firstIdentifierFlags[c] = true;
-            } else if (c >= 'a' && c <= 'z') {
+            } else if (c >= 'a' && c <= 'z') {      // [97, 122]
                 firstIdentifierFlags[c] = true;
-            } else if (c == '_' || c == '$') {
+            } else if (c == '_' || c == '$') {      // 95 || 36
                 firstIdentifierFlags[c] = true;
             }
         }
 
         for (char c = 0; c < identifierFlags.length; ++c) {
-            if (c >= 'A' && c <= 'Z') {
+            if (c >= 'A' && c <= 'Z') {         // [65, 90]
                 identifierFlags[c] = true;
-            } else if (c >= 'a' && c <= 'z') {
+            } else if (c >= 'a' && c <= 'z') {  // [97, 122]
                 identifierFlags[c] = true;
-            } else if (c == '_') {
+            } else if (c == '_') {              // 95
                 identifierFlags[c] = true;
-            } else if (c >= '0' && c <= '9') {
+            } else if (c >= '0' && c <= '9') {  // [48, 57]
                 identifierFlags[c] = true;
             }
         }
 
         try {
+            // 加载FastJson的properties文件
             loadPropertiesFromFile();
         } catch (Throwable e) {
             //skip
+            // TODO: 2022/11/23 不明白这里为什么要catch？
         }
     }
     
@@ -86,9 +93,11 @@ public class IOUtils {
     }
     
     public static void loadPropertiesFromFile(){
+        // TODO: 2022/11/23 Java的安全模型 https://zhuanlan.zhihu.com/p/37629868
         InputStream imputStream = AccessController.doPrivileged(new PrivilegedAction<InputStream>() {
             public InputStream run() {
                 ClassLoader cl = Thread.currentThread().getContextClassLoader();
+                // 如果用户线程存在类加载器，就用当前类加载器加载properties文件，否则就用系统类加载器加载文件
                 if (cl != null) {
                     return cl.getResourceAsStream(FASTJSON_PROPERTIES);
                 } else {
@@ -103,6 +112,7 @@ public class IOUtils {
                 imputStream.close();
             } catch (java.io.IOException e) {
                 // skip
+                // TODO: 2022/11/23 这里不需要关闭inputStream了吗？ 是否应该打印warn日志呢？
             }
         }
     }

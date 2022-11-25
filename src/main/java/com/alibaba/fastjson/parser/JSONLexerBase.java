@@ -38,49 +38,53 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         token = ERROR;
     }
 
-    protected int                            token;
+    protected int                            token;         // 当前正在解析对象的标识
     protected int                            pos;
-    protected int                            features;
+    protected int                            features;      // 反序列化特征值
 
-    protected char                           ch;
-    protected int                            bp;
+    protected char                           ch;            // 当前位置bp所在的字符
+    protected int                            bp;            // b ? position
 
     protected int                            eofPos;
 
     /**
+     * 字符串缓存(String Buffer)
+     * @see JSONLexerBase#SBUF_LOCAL
      * A character buffer for literals.
      */
     protected char[]                         sbuf;
-    protected int                            sp;
+    protected int                            sp;        // sbuf position，下一个字符缓存位置，也可以说是缓冲区字符串的长度
 
     /**
      * number start position
      */
-    protected int                            np;
+    protected int                            np;        // np用于标识字符串常量的起始位置
 
     protected boolean                        hasSpecial;
 
     protected Calendar                       calendar           = null;
-    protected TimeZone                       timeZone           = JSON.defaultTimeZone;
-    protected Locale                         locale             = JSON.defaultLocale;
+    protected TimeZone                       timeZone           = JSON.defaultTimeZone;     // 默认时区
+    protected Locale                         locale             = JSON.defaultLocale;       // 默认语言
 
     public int                               matchStat          = UNKNOWN;
 
-    private final static ThreadLocal<char[]> SBUF_LOCAL         = new ThreadLocal<char[]>();
+    private final static ThreadLocal<char[]> SBUF_LOCAL         = new ThreadLocal<char[]>();    // 字符缓冲池
 
-    protected String                         stringDefaultValue = null;
+    protected String                         stringDefaultValue = null;     // String属性的默认值，与InitStringFieldAsEmpty特征值相关
     protected int                            nanos              = 0;
 
     public JSONLexerBase(int features){
         this.features = features;
 
         if ((features & Feature.InitStringFieldAsEmpty.mask) != 0) {
+            // 如果没有传入InitStringFieldAsEmpty Feature, String属性的默认值会是null,传入可为Empty(""); 默认false;
             stringDefaultValue = "";
         }
 
         sbuf = SBUF_LOCAL.get();
 
         if (sbuf == null) {
+            // TODO: 2022/11/25 为什么初始化大小是512？
             sbuf = new char[512];
         }
     }
@@ -104,7 +108,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
             pos = bp;
 
             if (ch == '/') {
-                skipComment();
+                skipComment();      // 跳过注释
                 continue;
             }
 
@@ -564,6 +568,10 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
 
     public abstract char next();
 
+    /**
+     * 跳过字符串中的注释
+     * ① // ② \/** \n * \n **\/
+     */
     protected void skipComment() {
         next();
         if (ch == '/') {
@@ -821,10 +829,16 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         return "";
     }
 
+    /**
+     * 结合JSON反序列化中的符号表，分析JSON中的非引号属性
+     * @return key
+     */
     public final String scanSymbolUnQuoted(final SymbolTable symbolTable) {
         if (token == JSONToken.ERROR && pos == 0 && bp == 1) {
             bp = 0; // adjust
         }
+
+        // 判断属性字符串首字符只能是[a-z][A-Z][_|$]
         final boolean[] firstIdentifierFlags = IOUtils.firstIdentifierFlags;
         final char first = ch;
 
@@ -834,12 +848,12 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                     + info());
         }
 
-        final boolean[] identifierFlags = IOUtils.identifierFlags;
+        final boolean[] identifierFlags = IOUtils.identifierFlags;  // 字符串非首字母 [a-z][A-Z][0-9][_]
 
         int hash = first;
 
-        np = bp;
-        sp = 1;
+        np = bp;        // 字符串常量的在JSON的首位置
+        sp = 1;         // sp表示字符串常量的长度
         char chLocal;
         for (;;) {
             chLocal = next();
@@ -877,25 +891,36 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
 
     protected abstract void copyTo(int offset, int count, char[] dest);
 
+    /**
+     * 当前字符为‘“’，调用该方法扫描字符串常量
+     */
     public final void scanString() {
-        np = bp;
-        hasSpecial = false;
+        np = bp;                // 用于标识字符串常量的起始位置
+        hasSpecial = false;     // 用于标识上一个字符是否为转义字符
         char ch;
         for (;;) {
             ch = next();
 
+            // 与下一个字符构成空字符串，""
             if (ch == '\"') {
                 break;
             }
 
+            /**
+             * 下个字符为尾部标识符，判断是否真正结尾。
+             * 结尾："没有匹配字符，异常；非结尾添加进字符串缓冲池，遍历下一个字符
+             */
             if (ch == EOI) {
-                if (!isEOF()) {
+                if (!isEOF()) {     // ch并不能表明是字符串末尾，0X1A特定字符
                     putChar((char) EOI);
                     continue;
                 }
                 throw new JSONException("unclosed string : " + ch);
             }
 
+            /**
+             * 下一个字符为转义字符，
+             */
             if (ch == '\\') {
                 if (!hasSpecial) {
                     hasSpecial = true;
@@ -910,13 +935,14 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                         sbuf = newsbuf;
                     }
 
-                    copyTo(np + 1, sp, sbuf);
+                    copyTo(np + 1, sp, sbuf);   // 将JSON串从np+1的位置开始，长度为缓冲区内的字符串复制到缓冲区中。
                     // text.getChars(np + 1, np + 1 + sp, sbuf, 0);
                     // System.arraycopy(buf, np + 1, sbuf, 0, sp);
                 }
 
                 ch = next();
 
+                // 处理转义字符，添加至字符串缓存中
                 switch (ch) {
                     case '0':
                         putChar('\0');
@@ -973,7 +999,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                     case '\\': // 92
                         putChar('\\');
                         break;
-                    case 'x':
+                    case 'x':   // 解析\\x后面的2个十六进制
                         char x1 = next();
                         char x2 = next();
 
@@ -987,10 +1013,14 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
                             throw new JSONException("invalid escape character \\x" + x1 + x2);
                         }
 
+                        /**
+                         * TODO: 2022/11/25 这里为什么不这么写？
+                         * char x_char = (int)digits[x1] * 16 + (int)digits[x2];
+                         */
                         char x_char = (char) (digits[x1] * 16 + digits[x2]);
                         putChar(x_char);
                         break;
-                    case 'u':
+                    case 'u':   // 解析\\u后面的4个十六进制
                         char u1 = next();
                         char u2 = next();
                         char u3 = next();
@@ -4632,6 +4662,9 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         return uuid;
     }
 
+    /**
+     * 当前字符为't',接下来的类型应该为true对象
+     */
     public final void scanTrue() {
         if (ch != 't') {
             throw new JSONException("error parse true");
@@ -4739,6 +4772,9 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         }
     }
 
+    /**
+     * 当前字符为'f',接下来的类型应该为false对象
+     */
     public final void scanFalse() {
         if (ch != 'f') {
             throw new JSONException("error parse false");
@@ -4927,6 +4963,9 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
         return true;
     }
 
+    /**
+     * 跳过空白符(包括注释)
+     */
     public final void skipWhitespace() {
         for (;;) {
             if (ch <= '/') {
@@ -5085,6 +5124,8 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
     }
 
     /**
+     * 将字符ch放入sbuf缓冲中，索引为sp;
+     * 如果长度不够，2倍扩容。
      * Append a character to sbuf.
      */
     protected final void putChar(char ch) {
@@ -5313,7 +5354,7 @@ public abstract class JSONLexerBase implements JSONLexer, Closeable {
     protected static final long  MULTMIN_RADIX_TEN     = Long.MIN_VALUE / 10;
     protected static final int   INT_MULTMIN_RADIX_TEN = Integer.MIN_VALUE / 10;
 
-    protected final static int[] digits                = new int[(int) 'f' + 1];
+    protected final static int[] digits                = new int[(int) 'f' + 1];        // 16进制转换 ()
 
     static {
         for (int i = '0'; i <= '9'; ++i) {

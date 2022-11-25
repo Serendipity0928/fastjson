@@ -93,7 +93,7 @@ public enum Feature {
     DisableCircularReferenceDetect,
     
     /**
-     * 没有值得字符串属性设置为空串
+     * 没有值的字符串属性设置为空串
      * 默认false;
      * @since 1.1.10
      */
@@ -162,7 +162,7 @@ public enum Feature {
 
     /**
      * 解析时将未用引号包含的json字段名作为String类型存储
-     * 默认false;
+     * 默认false; 序列化也会用这个属性，可在fastJson中设置parser.features.NonStringKeyAsString
      * @since 1.2.42
      */
     NonStringKeyAsString,
@@ -176,7 +176,7 @@ public enum Feature {
 
     /**
      * 枚举未匹配到时抛出异常，否则解析为null
-     * 默认false;
+     * 默认false; 序列化时这个属性可通过fastjson.properties配置parser.features.ErrorOnEnumNotMatch或fastjson.parser.features.ErrorOnEnumNotMatc
      * @since 1.2.55
      */
     ErrorOnEnumNotMatch,
@@ -216,6 +216,13 @@ public enum Feature {
         return (features & feature.mask) != 0;
     }
 
+    /**
+     * 根据传入的feature来调整features特征值。
+     * @param features 原有特征值
+     * @param feature 待处理特征值
+     * @param state true:添加；false:去除
+     * @return 处理后特征值
+     */
     public static int config(int features, Feature feature, boolean state) {
         if (state) {
             features |= feature.mask;

@@ -63,17 +63,22 @@ import com.alibaba.fastjson.util.TypeUtils;
  * @author wenshao[szujobs@hotmail.com]
  */
 public abstract class JSON implements JSONStreamAware, JSONAware {
-    public static TimeZone         defaultTimeZone      = TimeZone.getDefault();
-    public static Locale           defaultLocale        = Locale.getDefault();
-    public static String           DEFAULT_TYPE_KEY     = "@type";
-    static final SerializeFilter[] emptyFilters         = new SerializeFilter[0];
-    public static String           DEFFAULT_DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
-    public static int              DEFAULT_PARSER_FEATURE;
-    public static int              DEFAULT_GENERATE_FEATURE;
+    public static TimeZone         defaultTimeZone      = TimeZone.getDefault();    // 当前机器的默认时区
+    public static Locale           defaultLocale        = Locale.getDefault();      // 当前机器的默认语言值
+    public static String           DEFAULT_TYPE_KEY     = "@type";                  // ...
+    static final SerializeFilter[] emptyFilters         = new SerializeFilter[0];   // 序列化特征？初始化数组不使用null
+    public static String           DEFFAULT_DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";    // 默认日期格式化
+    public static int              DEFAULT_PARSER_FEATURE;                          // 默认的反序列化特征值(通过掩码存储和获取)
+    public static int              DEFAULT_GENERATE_FEATURE;                        // 默认的序列化特征值(通过掩码存储和获取)
 
+    /**
+     * 支持Mixin(混入)特性，主要用于支持多个set方法，这些set的参数均可作为JsonKey。具体需求见issue2685 ↓
+     * @see com.alibaba.json.bvt.issue_2600.Issue2685
+     */
     private static final ConcurrentHashMap<Type, Type> mixInsMapper = new ConcurrentHashMap<Type, Type>(16);
     
     static {
+        // 这个代码块中都是FastJson默认的反序列化特征值
         int features = 0;
         features |= Feature.AutoCloseSource.getMask();
         features |= Feature.InternFieldNames.getMask();
@@ -87,6 +92,7 @@ public abstract class JSON implements JSONStreamAware, JSONAware {
     }
 
     static {
+        // 这个代码块中都是FastJson默认的序列化特征值
         int features = 0;
         features |= SerializerFeature.QuoteFieldNames.getMask();
         features |= SerializerFeature.SkipTransientField.getMask();
@@ -95,9 +101,15 @@ public abstract class JSON implements JSONStreamAware, JSONAware {
 
         DEFAULT_GENERATE_FEATURE = features;
 
+        // 其余自定义配置的默认序列化特征
         config(IOUtils.DEFAULT_PROPERTIES);
     }
 
+    /**
+     * 根据fastjson.properties中的配置信息设置一系列序列化特征默认值。
+     * 另外这里还设置了序列化和非序列化配置类中的ASM标识
+     * @param properties 自定义配置
+     */
     private static void config(Properties properties) {
         {
             String featuresProperty = properties.getProperty("fastjson.serializerFeatures.MapSortField");
@@ -124,6 +136,7 @@ public abstract class JSON implements JSONStreamAware, JSONAware {
         }
 
         {
+            // 这里根据fastjson配置关闭ASM
             if ("false".equals(properties.getProperty("fastjson.asmEnable"))) {
                 ParserConfig.global.setAsmEnable(false);
                 SerializeConfig.globalInstance.setAsmEnable(false);
@@ -133,22 +146,34 @@ public abstract class JSON implements JSONStreamAware, JSONAware {
 
     /**
      * config default type key
+     * 自定义配置Type关键字，具体需求见issue585 ↓
+     * @see com.alibaba.json.bvt.bug.Issue585
      * @since 1.2.14
      */
     public static void setDefaultTypeKey(String typeKey) {
         DEFAULT_TYPE_KEY = typeKey;
+        // 将这个自定义的关键字添加至符号表
         ParserConfig.global.symbolTable.addSymbol(typeKey, 
                                                   0, 
                                                   typeKey.length(), 
                                                   typeKey.hashCode(), true);
     }
-    
+
+    // 反序列化API starting>>>>>>
+
+    /**
+     * 作用：根据JSON字符串反序列化为Object类型
+     * IA：最终会使用默认反序列化配置以及默认反序列化特征，调用@see方法
+     * @see JSON#parse(String, ParserConfig, int)
+     */
     public static Object parse(String text) {
         return parse(text, DEFAULT_PARSER_FEATURE);
     }
 
     /**
-     *
+     * 作用：根据[JSON字符串、反序列化配置]反序列为Object类型
+     * IA：最终会使用默认返序列化特征，调用@see方法
+     * @see JSON#parse(String, ParserConfig, int)
      * @since 1.2.38
      */
     public static Object parse(String text, ParserConfig config) {
@@ -156,7 +181,9 @@ public abstract class JSON implements JSONStreamAware, JSONAware {
     }
 
     /**
-     *
+     * 作用：根据[JSON字符串、反序列化配置、传入的多个特征枚举]反序列为Object类型
+     * IA：会对User传入的多个feature进行添加处理后，再调用@see方法
+     * @see JSON#parse(String, ParserConfig, int)
      * @since 1.2.68
      */
     public static Object parse(String text, ParserConfig config, Feature... features) {
@@ -169,7 +196,9 @@ public abstract class JSON implements JSONStreamAware, JSONAware {
     }
 
     /**
-     *
+     * ImportantApi (TODO:写一个插件，用于快速定位重要API)
+     * ① 根据【Json字符串、反序列化配置、反序列化特性】反序列化为Object类型
+     * think: 这个方法其实不必要是public，对于用户来说，需要使用这个API的用户非常熟悉features怎么来的！
      * @since 1.2.38
      */
     public static Object parse(String text, ParserConfig config, int features) {
@@ -187,6 +216,11 @@ public abstract class JSON implements JSONStreamAware, JSONAware {
         return value;
     }
 
+    /**
+     * 作用：根据[JSON字符串、特征值]反序列为Object类型
+     * IA：使用默认的反序列化配置，然后调用@see方法。
+     * @see JSON#parse(String, ParserConfig, int)
+     */
     public static Object parse(String text, int features) {
         return parse(text, ParserConfig.getGlobalInstance(), features);
     }
@@ -213,6 +247,11 @@ public abstract class JSON implements JSONStreamAware, JSONAware {
         return parse(input, off, len, charsetDecoder, featureValues);
     }
 
+    /**
+     * ImportantApi
+     * ① 
+     * // TODO: 2022/11/24 作用？
+     */
     public static Object parse(byte[] input, int off, int len, CharsetDecoder charsetDecoder, int features) {
         charsetDecoder.reset();
 
@@ -235,6 +274,11 @@ public abstract class JSON implements JSONStreamAware, JSONAware {
         return value;
     }
 
+    /**
+     * 作用：根据[JSON字符串、传入的多个特征枚举]反序列为Object类型
+     * IA：会对User传入的多个feature进行添加处理后，使用默认的配置，再调用@see方法
+     * @see JSON#parse(String, ParserConfig, int)
+     */
     public static Object parse(String text, Feature... features) {
         int featureValues = DEFAULT_PARSER_FEATURE;
         for (Feature feature : features) {
@@ -330,6 +374,10 @@ public abstract class JSON implements JSONStreamAware, JSONAware {
         return (T) parseObject(input, clazz, ParserConfig.global, processor, DEFAULT_PARSER_FEATURE, features);
     }
 
+    /**
+     * ImportantApi
+     * ① ？？？
+     */
     @SuppressWarnings("unchecked")
     public static <T> T parseObject(String input, Type clazz, int featureValues, Feature... features) {
         if (input == null) {
@@ -362,6 +410,10 @@ public abstract class JSON implements JSONStreamAware, JSONAware {
         return parseObject(input, clazz, config, null, featureValues, features);
     }
 
+    /**
+     * ImportantApi
+     * ①
+     */
     @SuppressWarnings("unchecked")
     public static <T> T parseObject(String input, Type clazz, ParserConfig config, ParseProcess processor,
                                           int featureValues, Feature... features) {
@@ -497,6 +549,10 @@ public abstract class JSON implements JSONStreamAware, JSONAware {
         return (T) parseObject(chars, position, clazz, features);
     }
 
+    /**
+     * ImportantApi
+     * ①
+     */
     @SuppressWarnings("unchecked")
     public static <T> T parseObject(char[] input, int length, Type clazz, Feature... features) {
         if (input == null || input.length == 0) {
@@ -592,6 +648,10 @@ public abstract class JSON implements JSONStreamAware, JSONAware {
         return parseArray(text, ParserConfig.global);
     }
 
+    /**
+     * ImportantApi
+     * ①
+     */
     public static JSONArray parseArray(String text, ParserConfig parserConfig) {
         if (text == null) {
             return null;
@@ -623,6 +683,10 @@ public abstract class JSON implements JSONStreamAware, JSONAware {
         return parseArray(text, clazz, ParserConfig.global);
     }
 
+    /**
+     * ImportantApi
+     * ①
+     */
     public static <T> List<T> parseArray(String text, Class<T> clazz, ParserConfig config) {
         if (text == null) {
             return null;
@@ -654,6 +718,10 @@ public abstract class JSON implements JSONStreamAware, JSONAware {
         return parseArray(text, types, ParserConfig.global);
     }
 
+    /**
+     * ImportantApi
+     * ①
+     */
     public static List<Object> parseArray(String text, Type[] types, ParserConfig config) {
         if (text == null) {
             return null;
@@ -675,6 +743,7 @@ public abstract class JSON implements JSONStreamAware, JSONAware {
 
         return list;
     }
+    // 序列化API <<<<<<end
 
     /**
      * This method serializes the specified object into its equivalent Json representation. Note that this method works fine if the any of the object fields are of generic type,

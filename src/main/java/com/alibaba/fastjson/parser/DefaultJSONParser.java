@@ -39,21 +39,21 @@ import static com.alibaba.fastjson.parser.JSONToken.*;
  */
 public class DefaultJSONParser implements Closeable {
 
-    public final Object                input;
-    public final SymbolTable           symbolTable;
-    protected ParserConfig             config;
+    public final Object                input;           // 被解析的对象，一般是JSON串
+    public final SymbolTable           symbolTable;     // 符号表，缓存
+    protected ParserConfig             config;          // 反序列化配置
 
     private final static Set<Class<?>> primitiveClasses   = new HashSet<Class<?>>();
 
     private String                     dateFormatPattern  = JSON.DEFFAULT_DATE_FORMAT;
     private DateFormat                 dateFormat;
 
-    public final JSONLexer             lexer;
+    public final JSONLexer             lexer;       // JSON分析器
 
     protected ParseContext             context;
 
-    private ParseContext[]             contextArray;
-    private int                        contextArrayIndex  = 0;
+    private ParseContext[]             contextArray;            // 解析上下文数组
+    private int                        contextArrayIndex  = 0;  // 上下文实例下一个索引，也是实例个数
 
     private List<ResolveTask>          resolveTaskList;
 
@@ -167,7 +167,7 @@ public class DefaultJSONParser implements Closeable {
             lexer.next();
             ((JSONLexerBase) lexer).token = JSONToken.LBRACKET;
         } else {
-            lexer.nextToken(); // prime the pump
+            lexer.nextToken(); // prime the pump(采取措施使某事发展)
         }
     }
 
@@ -186,21 +186,25 @@ public class DefaultJSONParser implements Closeable {
     public final Object parseObject(final Map object, Object fieldName) {
         final JSONLexer lexer = this.lexer;
 
+        // 递归终止条件①：当前解析对象标识为NULL，对象就返回null
         if (lexer.token() == JSONToken.NULL) {
             lexer.nextToken();
             return null;
         }
 
+        // 递归终止条件②：当前解析对象标识为},已经解析完毕，返回object
         if (lexer.token() == JSONToken.RBRACE) {
             lexer.nextToken();
             return object;
         }
 
+        // 递归终止条件③：当前解析对象标识为字符串，并且字符串的长度为0(疑问？)
         if (lexer.token() == JSONToken.LITERAL_STRING && lexer.stringVal().length() == 0) {
             lexer.nextToken();
             return object;
         }
 
+        // 递归解析的对象标识只能是{或者[
         if (lexer.token() != JSONToken.LBRACE && lexer.token() != JSONToken.COMMA) {
             throw new JSONException("syntax error, expect {, actual " + lexer.tokenName() + ", " + lexer.info());
         }
@@ -215,6 +219,7 @@ public class DefaultJSONParser implements Closeable {
                 lexer.skipWhitespace();
                 char ch = lexer.getCurrent();
                 if (lexer.isEnabled(Feature.AllowArbitraryCommas)) {
+                    // AllowArbitraryCommas默认ture，需要处理多重逗号
                     while (ch == ',') {
                         lexer.next();
                         lexer.skipWhitespace();
@@ -262,7 +267,7 @@ public class DefaultJSONParser implements Closeable {
                     }
                 } else if (ch == EOI) {
                     throw new JSONException("syntax error");
-                } else if (ch == ',') {
+                } else if (ch == ',') {     // 如果不允许重复逗号，JSON串的重复逗号会在这里报错
                     throw new JSONException("syntax error");
                 } else if ((ch >= '0' && ch <= '9') || ch == '-') {
                     lexer.resetStringPosition();
@@ -291,13 +296,13 @@ public class DefaultJSONParser implements Closeable {
                     key = parse();
                     isObjectKey = true;
                 } else {
-                    if (!lexer.isEnabled(Feature.AllowUnQuotedFieldNames)) {
+                    if (!lexer.isEnabled(Feature.AllowUnQuotedFieldNames)) {    // 是否允许使用非双引号属性
                         throw new JSONException("syntax error");
                     }
 
-                    key = lexer.scanSymbolUnQuoted(symbolTable);
+                      key = lexer.scanSymbolUnQuoted(symbolTable);
                     lexer.skipWhitespace();
-                    ch = lexer.getCurrent();
+                    ch = lexer.getCurrent();        // 解析完属性后，这个字符必为‘:’(58)
                     if (ch != ':') {
                         throw new JSONException("expect ':' at " + lexer.pos() + ", actual " + ch);
                     }
@@ -310,7 +315,7 @@ public class DefaultJSONParser implements Closeable {
 
                 ch = lexer.getCurrent();
 
-                lexer.resetStringPosition();
+                lexer.resetStringPosition();        // 字符解析完毕，设置sp为0
 
                 if (key == JSON.DEFAULT_TYPE_KEY
                         && !lexer.isEnabled(Feature.DisableSpecialKeyDetect)) {
@@ -505,7 +510,8 @@ public class DefaultJSONParser implements Closeable {
                     }
 
                     map.put(key, value);
-                } else if (ch >= '0' && ch <= '9' || ch == '-') {
+                }
+                else if (ch >= '0' && ch <= '9' || ch == '-') {
                     lexer.scanNumber();
                     if (lexer.token() == JSONToken.LITERAL_INT) {
                         value = lexer.integerValue();
@@ -514,7 +520,8 @@ public class DefaultJSONParser implements Closeable {
                     }
 
                     map.put(key, value);
-                } else if (ch == '[') { // 减少嵌套，兼容android
+                }
+                else if (ch == '[') { // 减少嵌套，兼容android
                     lexer.nextToken();
 
                     JSONArray list = new JSONArray();
@@ -544,7 +551,8 @@ public class DefaultJSONParser implements Closeable {
                     } else {
                         throw new JSONException("syntax error");
                     }
-                } else if (ch == '{') { // 减少嵌套，兼容 Android
+                }
+                else if (ch == '{') { // 减少嵌套，兼容 Android
                     lexer.nextToken();
 
                     final boolean parentIsArray = fieldName != null && fieldName.getClass() == Integer.class;
@@ -611,12 +619,14 @@ public class DefaultJSONParser implements Closeable {
                     } else {
                         throw new JSONException("syntax error, " + lexer.tokenName());
                     }
-                } else {
+                }
+                else {
                     lexer.nextToken();
                     value = parse();
 
                     map.put(key, value);
 
+                    // 解析完KV后，下一个token要么是'}'(解析结束)，要么是','下一个平级对象
                     if (lexer.token() == JSONToken.RBRACE) {
                         lexer.nextToken();
                         return object;

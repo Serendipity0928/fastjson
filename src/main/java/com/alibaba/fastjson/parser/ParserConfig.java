@@ -123,8 +123,17 @@ public class ParserConfig {
     private final IdentityHashMap<Type, IdentityHashMap<Type, ObjectDeserializer>> mixInDeserializers = new IdentityHashMap<Type, IdentityHashMap<Type, ObjectDeserializer>>(16);
     private final ConcurrentMap<String,Class<?>>            typeMapping           = new ConcurrentHashMap<String,Class<?>>(16, 0.75f, 1);
 
+    /**
+     * 是否使用ASM？默认只要不是安卓虚拟机都是true。
+     * 这个可通过fastjson配置fastjson.asmEnable进行关闭 ↓
+     * @see JSON#config(Properties)
+     */
     private boolean                                         asmEnable             = !ASMUtils.IS_ANDROID;
 
+    /**
+     * 初始化反序列中会用到的符号表
+     * // TODO: 2022/11/25 为什么符号表的大小为4096？不同的大小带来的影响是什么
+     */
     public final SymbolTable                                symbolTable           = new SymbolTable(4096);
 
     public PropertyNamingStrategy                           propertyNamingStrategy;

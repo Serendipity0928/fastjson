@@ -16,6 +16,7 @@
 package com.alibaba.fastjson.parser;
 
 /**
+ * 解析对象的标识
  * @author wenshao[szujobs@hotmail.com]
  */
 public class JSONToken {

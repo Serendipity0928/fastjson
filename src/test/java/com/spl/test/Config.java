@@ -9,5 +9,6 @@ public class Config {
 
     private boolean open;
     private int intValue;
+    private String strKey;
 
 }

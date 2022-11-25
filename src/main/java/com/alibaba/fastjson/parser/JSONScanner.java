@@ -46,10 +46,11 @@ public final class JSONScanner extends JSONLexerBase {
 
         text = input;
         len = text.length();
-        bp = -1;
+        bp = -1;    // 默认初始指针bp为-1
 
-        next();
+        next();     // 移动一次
         if (ch == 65279) { // utf-8 bom
+            // utf-8编码方式有可能存在BOM头(U+FEFF)，因此这里跳过。blog.csdn.net/u012373281/article/details/91410698
             next();
         }
     }
@@ -62,6 +63,11 @@ public final class JSONScanner extends JSONLexerBase {
         return text.charAt(index);
     }
 
+    /**
+     * 移动bp指针，并返回当前所指向的字符ch。
+     * 可能会返回EOI(尾部)
+     * @return ch
+     */
     public final char next() {
         int index = ++bp;
         return ch = (index >= this.len ? //
@@ -825,6 +831,9 @@ public final class JSONScanner extends JSONLexerBase {
         return true;
     }
 
+    /**
+     * 判断当前是否指向字符串末尾
+     */
     @Override
     public boolean isEOF() {
         return bp == len || (ch == EOI && bp + 1 >= len);
