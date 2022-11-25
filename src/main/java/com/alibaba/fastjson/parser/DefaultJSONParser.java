@@ -1561,6 +1561,7 @@ public class DefaultJSONParser implements Closeable {
         final JSONLexer lexer = this.lexer;
 
         try {
+            // TODO: 2022/11/26 不理解这里为什么判断这个？
             if (lexer.isEnabled(Feature.AutoCloseSource)) {
                 if (lexer.token() != JSONToken.EOF) {
                     throw new JSONException("not close json text, token : " + JSONToken.name(lexer.token()));

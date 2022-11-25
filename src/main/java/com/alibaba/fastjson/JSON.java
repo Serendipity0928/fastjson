@@ -38,7 +38,7 @@ import com.alibaba.fastjson.util.TypeUtils;
 
 /**
  * This is the main class for using Fastjson. You usually call these two methods {@link #toJSONString(Object)} and {@link #parseObject(String, Class)}.
- * 
+ *
  * <p>Here is an example of how fastjson is used for a simple Class:
  *
  * <pre>
@@ -46,20 +46,20 @@ import com.alibaba.fastjson.util.TypeUtils;
  * String json = JSON.toJSONString(model); // serializes model to Json
  * Model model2 = JSON.parseObject(json, Model.class); // deserializes json into model2
  * </pre>
- * 
+ *
 * <p>If the object that your are serializing/deserializing is a {@code ParameterizedType}
  * (i.e. contains at least one type parameter and may be an array) then you must use the
  * {@link #toJSONString(Object)} or {@link #parseObject(String, Type, Feature[])} method.  Here is an
  * example for serializing and deserialing a {@code ParameterizedType}:
- * 
+ *
  * <pre>
  * String json = "[{},...]";
  * Type listType = new TypeReference&lt;List&lt;Model&gt;&gt;() {}.getType();
  * List&lt;Model&gt; modelList = JSON.parseObject(json, listType);
  * </pre>
- * 
+ *
  * @see com.alibaba.fastjson.TypeReference
- * 
+ *
  * @author wenshao[szujobs@hotmail.com]
  */
 public abstract class JSON implements JSONStreamAware, JSONAware {
@@ -76,7 +76,7 @@ public abstract class JSON implements JSONStreamAware, JSONAware {
      * @see com.alibaba.json.bvt.issue_2600.Issue2685
      */
     private static final ConcurrentHashMap<Type, Type> mixInsMapper = new ConcurrentHashMap<Type, Type>(16);
-    
+
     static {
         // 这个代码块中都是FastJson默认的反序列化特征值
         int features = 0;
@@ -153,9 +153,9 @@ public abstract class JSON implements JSONStreamAware, JSONAware {
     public static void setDefaultTypeKey(String typeKey) {
         DEFAULT_TYPE_KEY = typeKey;
         // 将这个自定义的关键字添加至符号表
-        ParserConfig.global.symbolTable.addSymbol(typeKey, 
-                                                  0, 
-                                                  typeKey.length(), 
+        ParserConfig.global.symbolTable.addSymbol(typeKey,
+                                                  0,
+                                                  typeKey.length(),
                                                   typeKey.hashCode(), true);
     }
 
@@ -206,11 +206,16 @@ public abstract class JSON implements JSONStreamAware, JSONAware {
             return null;
         }
 
+        // 反序列化①：初始化默认JSON反序列化解析器
         DefaultJSONParser parser = new DefaultJSONParser(text, config, features);
+
+        // 反序列化②：执行具体解析操作，返回解析后的对象
         Object value = parser.parse();
 
+        // 反序列化③：与$ref相关，后续补充；对value进一步做调整
         parser.handleResovleTask(value);
 
+        // 反序列化④：关闭JSON反序列化解析器
         parser.close();
 
         return value;
@@ -249,7 +254,7 @@ public abstract class JSON implements JSONStreamAware, JSONAware {
 
     /**
      * ImportantApi
-     * ① 
+     * ①
      * // TODO: 2022/11/24 作用？
      */
     public static Object parse(byte[] input, int off, int len, CharsetDecoder charsetDecoder, int features) {
