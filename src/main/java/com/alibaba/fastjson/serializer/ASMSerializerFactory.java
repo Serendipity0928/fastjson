@@ -407,6 +407,11 @@ public class ASMSerializerFactory implements Opcodes {
         byte[] code = cw.toByteArray();
 
         Class<?> serializerClass = classLoader.defineClassPublic(classNameFull, code, 0, code.length);
+
+//        FileOutputStream fileOutputStream = new FileOutputStream(new File("/Users/spl/own/fastjson/src/main/java/com/alibaba/fastjson/serializer/" + className + ".class"));
+//        fileOutputStream.write(code);
+//        fileOutputStream.close();
+
         Constructor<?> constructor = serializerClass.getConstructor(SerializeBeanInfo.class);
         Object instance = constructor.newInstance(beanInfo);
 
